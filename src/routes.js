@@ -37,16 +37,16 @@ Coded by www.creative-tim.com
 
 // Material Dashboard 2 React layouts
 import Dashboard from "layouts/dashboard";
-import Tables from "layouts/tables";
-import Billing from "layouts/billing";
-import RTL from "layouts/rtl";
-import Notifications from "layouts/notifications";
-import Profile from "layouts/profile";
-import SignIn from "layouts/authentication/sign-in";
-import SignUp from "layouts/authentication/sign-up";
 
 // @mui icons
 import Icon from "@mui/material/Icon";
+
+// ERP PAGES
+import Companies from "pages/Companies";
+import Customers from "pages/Customers";
+import Products from "pages/Products";
+import Orders from "pages/Orders";
+import Invoices from "pages/Invoices";
 
 const routes = [
   {
@@ -57,61 +57,48 @@ const routes = [
     route: "/dashboard",
     component: <Dashboard />,
   },
+
+  { type: "title", title: "ERP MODULES", key: "erp-title" },
+
   {
     type: "collapse",
-    name: "Tables",
-    key: "tables",
-    icon: <Icon fontSize="small">table_view</Icon>,
-    route: "/tables",
-    component: <Tables />,
+    name: "Companies",
+    key: "companies",
+    icon: <Icon fontSize="small">business</Icon>,
+    route: "/companies",
+    component: <Companies />,
   },
   {
     type: "collapse",
-    name: "Billing",
-    key: "billing",
+    name: "Customers",
+    key: "customers",
+    icon: <Icon fontSize="small">people</Icon>,
+    route: "/customers",
+    component: <Customers />,
+  },
+  {
+    type: "collapse",
+    name: "Products",
+    key: "products",
+    icon: <Icon fontSize="small">inventory_2</Icon>,
+    route: "/products",
+    component: <Products />,
+  },
+  {
+    type: "collapse",
+    name: "Orders",
+    key: "orders",
     icon: <Icon fontSize="small">receipt_long</Icon>,
-    route: "/billing",
-    component: <Billing />,
+    route: "/orders",
+    component: <Orders />,
   },
   {
     type: "collapse",
-    name: "RTL",
-    key: "rtl",
-    icon: <Icon fontSize="small">format_textdirection_r_to_l</Icon>,
-    route: "/rtl",
-    component: <RTL />,
-  },
-  {
-    type: "collapse",
-    name: "Notifications",
-    key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
-    route: "/notifications",
-    component: <Notifications />,
-  },
-  {
-    type: "collapse",
-    name: "Profile",
-    key: "profile",
-    icon: <Icon fontSize="small">person</Icon>,
-    route: "/profile",
-    component: <Profile />,
-  },
-  {
-    type: "collapse",
-    name: "Sign In",
-    key: "sign-in",
-    icon: <Icon fontSize="small">login</Icon>,
-    route: "/authentication/sign-in",
-    component: <SignIn />,
-  },
-  {
-    type: "collapse",
-    name: "Sign Up",
-    key: "sign-up",
-    icon: <Icon fontSize="small">assignment</Icon>,
-    route: "/authentication/sign-up",
-    component: <SignUp />,
+    name: "Invoices",
+    key: "invoices",
+    icon: <Icon fontSize="small">receipt</Icon>,
+    route: "/invoices",
+    component: <Invoices />, // import at the top
   },
 ];
 
