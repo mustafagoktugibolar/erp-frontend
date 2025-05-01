@@ -21,6 +21,12 @@
     "axios": "^1.9.0",
     "chart.js": "4.3.0",
     "chroma-js": "2.4.2",
+    "devextreme": "24.2.6",
+    "devextreme-react": "24.2.6",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "prop-types": "15.8.1",
     "react": "18.2.0",
     "react-chartjs-2": "5.2.0",
@@ -31,6 +37,7 @@
     "react-table": "7.8.0",
     "stylis": "4.1.4",
     "stylis-plugin-rtl": "2.1.1",
+    "xlsx": "^0.18.5",
     "yup": "1.1.1"
   },
   "scripts": {
@@ -60,6 +67,7 @@
   },
   "devDependencies": {
     "ajv": "^7.2.4",
+    "devextreme-themebuilder": "24.2.6",
     "eslint": "8.39.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-import": "2.27.5",
