@@ -40,14 +40,6 @@ import Dashboard from "layouts/dashboard";
 
 // @mui icons
 import Icon from "@mui/material/Icon";
-
-// ERP PAGES
-import Companies from "pages/Companies";
-import Customers from "pages/Customers";
-import Products from "pages/Products";
-import Orders from "pages/Orders";
-import Invoices from "pages/Invoices";
-
 const routes = [
   {
     type: "collapse",
@@ -59,47 +51,6 @@ const routes = [
   },
 
   { type: "title", title: "ERP MODULES", key: "erp-title" },
-
-  {
-    type: "collapse",
-    name: "Companies",
-    key: "companies",
-    icon: <Icon fontSize="small">business</Icon>,
-    route: "/companies",
-    component: <Companies />,
-  },
-  {
-    type: "collapse",
-    name: "Customers",
-    key: "customers",
-    icon: <Icon fontSize="small">people</Icon>,
-    route: "/customers",
-    component: <Customers />,
-  },
-  {
-    type: "collapse",
-    name: "Products",
-    key: "products",
-    icon: <Icon fontSize="small">inventory_2</Icon>,
-    route: "/products",
-    component: <Products />,
-  },
-  {
-    type: "collapse",
-    name: "Orders",
-    key: "orders",
-    icon: <Icon fontSize="small">receipt_long</Icon>,
-    route: "/orders",
-    component: <Orders />,
-  },
-  {
-    type: "collapse",
-    name: "Invoices",
-    key: "invoices",
-    icon: <Icon fontSize="small">receipt</Icon>,
-    route: "/invoices",
-    component: <Invoices />, // import at the top
-  },
 ];
 
 export default routes;

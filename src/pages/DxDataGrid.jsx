@@ -15,7 +15,7 @@ import CustomStore from "devextreme/data/custom_store";
 import DataSource from "devextreme/data/data_source";
 import { api } from "api";
 
-export default function DxDataGrid({ moduleKey, height = 600 }) {
+export default function DxDataGrid({ moduleKey, moduleId, height = 600 }) {
   const [columns, setColumns] = useState([]);
 
   // Create a CustomStore for CRUD operations
@@ -23,13 +23,51 @@ export default function DxDataGrid({ moduleKey, height = 600 }) {
     () =>
       new CustomStore({
         key: "id",
-        load: () => api.get(`/${moduleKey}`).then((res) => res.data),
-        insert: (newData) => api.post(`/${moduleKey}`, newData).then((res) => res.data),
-        update: (key, updatedData) =>
-          api.put(`/${moduleKey}/${key}`, updatedData).then((res) => res.data),
-        remove: (key) => api.delete(`/${moduleKey}/${key}`),
+        load: () => {
+          if (moduleId) {
+            return api.get(`/modules/${moduleId}/objects`).then((res) => {
+              // Backend returns List<ArcObject> where fields are in 'data' map
+              return res.data.map((obj) => ({
+                id: obj.arc_object_id,
+                ...obj.data,
+              }));
+            });
+          }
+          return api.get(`/${moduleKey}`).then((res) => res.data);
+        },
+        insert: (newData) => {
+          if (moduleId) {
+            // Construct ArcObject payload
+            const payload = { data: newData, moduleId };
+            return api.post(`/modules/${moduleId}/objects`, payload).then((res) => ({
+              id: res.data.arc_object_id,
+              ...res.data.data,
+            }));
+          }
+          return api.post(`/${moduleKey}`, newData).then((res) => res.data);
+        },
+        update: (key, updatedData) => {
+          if (moduleId) {
+            // key is the id (arc_object_id)
+            // Need to handle partial updates or full updates. DevExtreme passes updated fields.
+            // We likely need to merge with existing or send what we have.
+            // For now, let's wrap in 'data'.
+            const payload = { data: updatedData, moduleId };
+            return api.put(`/modules/${moduleId}/objects/${key}`, payload).then((res) => ({
+              id: res.data.arc_object_id,
+              ...res.data.data,
+            }));
+          }
+          return api.put(`/${moduleKey}/${key}`, updatedData).then((res) => res.data);
+        },
+        remove: (key) => {
+          if (moduleId) {
+            return api.delete(`/modules/${moduleId}/objects/${key}`);
+          }
+          return api.delete(`/${moduleKey}/${key}`);
+        },
       }),
-    [moduleKey]
+    [moduleKey, moduleId]
   );
 
   // Wrap the store in a DataSource for the grid
@@ -82,5 +120,6 @@ export default function DxDataGrid({ moduleKey, height = 600 }) {
 
 DxDataGrid.propTypes = {
   moduleKey: PropTypes.string.isRequired,
+  moduleId: PropTypes.number,
   height: PropTypes.number,
 };

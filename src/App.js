@@ -62,40 +62,50 @@ export default function App() {
 
   // Fetch modules and build routes
   useEffect(() => {
-    api
-      .get("/modules")
-      .then((res) => {
-        const dynamic = res.data.map((m) => ({
-          type: "collapse",
-          name: m.name,
-          key: m.key,
-          icon: <Icon fontSize="small">{m.icon}</Icon>,
-          route: m.route,
-          component: <ModulePage moduleKey={m.key} />,
-        }));
+    import("routes").then(({ default: staticRoutes }) => {
+      api
+        .get("/modules")
+        .then((res) => {
+          const SYSTEM_MODULES = ["companies", "customers", "products", "orders", "invoices"];
+          const dynamic = res.data.map((m) => {
+            const isSystem = SYSTEM_MODULES.includes(m.key);
+            return {
+              type: "collapse",
+              name: m.name,
+              key: m.key,
+              icon: <Icon fontSize="small">{m.icon}</Icon>,
+              route: m.route,
+              component: <ModulePage moduleKey={m.key} moduleId={isSystem ? null : m.id} />,
+            };
+          });
 
-        setRoutes([
-          {
-            type: "collapse",
-            name: "Dashboard",
-            key: "dashboard",
-            icon: <Icon fontSize="small">dashboard</Icon>,
-            route: "/dashboard",
-            component: <Dashboard />,
-          },
-          {
+          // Inject "Add Module" after Dashboard if it's not already in routes.js
+          // Since we are moving to use routes.js as source, let's just append dynamic ones at the end
+          // or ideally, we merge them.
+          // staticRoutes contains Dashboard, Title, Companies...
+          // We want: Dashboard, Add Module, Title, Companies..., Dynamic...
+
+          // Let's create a specific "Add Module" route object
+          const createModuleRoute = {
             type: "collapse",
             name: "Add Module",
             key: "create-module",
             icon: <Icon fontSize="small">add</Icon>,
             route: "/modules/create",
             component: <CreateModule />,
-          },
-          { type: "title", title: "ERP MODULES", key: "erp-title" },
-          ...dynamic,
-        ]);
-      })
-      .catch(console.error);
+          };
+
+          // Insert CreateModule after Dashboard (index 0 usually)
+          const merged = [...staticRoutes];
+          // Find index of dashboard to insert after, or just unshift/splice
+          // For simplicity, let's just put it at the top or after dashboard
+          // Assuming staticRoutes[0] is Dashboard
+          merged.splice(1, 0, createModuleRoute);
+
+          setRoutes([...merged, ...dynamic]);
+        })
+        .catch(console.error);
+    });
   }, []);
 
   // Sidenav hover behavior

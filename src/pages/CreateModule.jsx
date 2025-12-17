@@ -32,7 +32,7 @@ import DataGrid, { Column } from "devextreme-react/data-grid";
 import "devextreme/dist/css/dx.common.css";
 import "devextreme/dist/css/dx.light.css";
 
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { api } from "api";
 
 export default function CreateModule() {
@@ -62,18 +62,63 @@ export default function CreateModule() {
     { value: "business", label: "Business", icon: <BusinessIcon /> },
   ];
 
+  const getCellValue = (cell) => {
+    const v = cell.value;
+    if (v && typeof v === "object") {
+      if (v.text) return v.text; // Hyperlink
+      if (v.result !== undefined) return v.result; // Formula
+      if (v.richText) return v.richText.map((r) => r.text).join("");
+    }
+    return v;
+  };
+
   const parseExcelFile = (fileObj) => {
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      setExcelData(json);
-      setExcelColumns(Object.keys(json[0] || {}));
-      setExcelParsed(true);
+    reader.onload = async (evt) => {
+      try {
+        const buffer = evt.target.result;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+
+        const jsonData = [];
+        const headers = [];
+
+        // Get headers from first row
+        const firstRow = worksheet.getRow(1);
+        if (!firstRow) return;
+
+        firstRow.eachCell((cell, colNumber) => {
+          headers[colNumber] = getCellValue(cell);
+        });
+
+        // Iterate rows starting from 2
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // Skip header row
+          const rowData = {};
+          let isEmpty = true;
+
+          headers.forEach((header, index) => {
+            if (!header) return;
+            const cell = row.getCell(index);
+            const val = getCellValue(cell);
+            // Handle simple values; complex objects (rich text, hyperlinks) might need processing
+            rowData[header] = val !== null && val !== undefined ? val : "";
+            if (val) isEmpty = false;
+          });
+
+          if (!isEmpty) jsonData.push(rowData);
+        });
+
+        console.log("Parsed Excel Data:", jsonData);
+        setExcelData(jsonData);
+        setExcelColumns(headers.filter((h) => h));
+        setExcelParsed(true);
+      } catch (error) {
+        console.error("Error parsing excel:", error);
+      }
     };
-    reader.readAsBinaryString(fileObj);
+    reader.readAsArrayBuffer(fileObj);
   };
 
   const onFileSelect = (e) => {
@@ -95,12 +140,33 @@ export default function CreateModule() {
   const handleSubmit = async () => {
     if (!moduleName) return;
 
+    // Derive columns based on mode
+    let moduleColumns = [];
+    if (mode === "excel") {
+      if (!excelParsed) return;
+      moduleColumns = excelColumns.map((field) => {
+        const sample = excelData[0]?.[field];
+        let type = "string";
+        if (typeof sample === "number") type = "number";
+        else if (sample instanceof Date) type = "date";
+        else if (typeof sample === "boolean") type = "boolean";
+        return { name: field, type, isEditable: true };
+      });
+    } else {
+      moduleColumns = columns.map((c) => ({
+        name: c.name,
+        type: c.type,
+        isEditable: true,
+      }));
+    }
+
     const modulePayload = {
       name: moduleName,
       key: moduleName.toLowerCase().replace(/\s+/g, "-"),
       icon: selectedIcon,
       route: `/${moduleName.toLowerCase().replace(/\s+/g, "-")}`,
       type: mode === "excel" ? "EXCEL" : "CREATION",
+      columns: moduleColumns,
     };
 
     try {
@@ -108,19 +174,14 @@ export default function CreateModule() {
       const moduleId = moduleRes.data.id;
 
       if (mode === "excel") {
-        if (!excelParsed) return;
-        const cols = excelColumns.map((field) => {
-          const sample = excelData[0]?.[field];
-          let type = "string";
-          if (typeof sample === "number") type = "number";
-          else if (sample instanceof Date) type = "date";
-          else if (typeof sample === "boolean") type = "boolean";
-          return { name: field, type };
-        });
+        // Use backend upload endpoint
+        const formData = new FormData();
+        formData.append("file", file);
 
-        await api.post(`/arcobjects/${moduleId}/bulk`, {
-          columns: cols,
-          rows: excelData,
+        await api.post(`/modules/${moduleId}/objects/upload`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
       }
 
