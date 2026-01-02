@@ -78,16 +78,15 @@ export default function DxDataGrid({ moduleKey, moduleId, height = 600 }) {
     let isMounted = true;
 
     const defineColumns = async () => {
+      // If columns are already defined, do not redefine/reset them
+      if (columns.length > 0) return;
+
       if (moduleId) {
-        // Try to fetch module definition first for schema
         try {
-          // We need to import getModuleDetails, but it's not imported yet. 
-          // Using generic api call here to avoid large refactor of imports if lazy.
-          // Better: rely on data source logic or just fetch here.
           const { data: moduleInfo } = await api.get(`/modules/${moduleId}`);
           if (moduleInfo && moduleInfo.columns && moduleInfo.columns.length > 0 && isMounted) {
             const schemaCols = moduleInfo.columns.map((col) => ({
-              dataField: col.name, // assuming column entity has 'name'
+              dataField: col.name,
               caption: col.label || col.name.charAt(0).toUpperCase() + col.name.slice(1),
               dataType: col.type ? col.type.toLowerCase() : "string",
               allowEditing: true,
@@ -108,27 +107,30 @@ export default function DxDataGrid({ moduleKey, moduleId, height = 600 }) {
           caption: field.charAt(0).toUpperCase() + field.slice(1),
           allowEditing: field !== "id",
         }));
-        // Only set if we haven't set yet (or override if we want data correctness)
-        setColumns((prev) => (prev.length > 0 ? prev : inferred));
+        setColumns(inferred);
       }
     };
 
     const handleChanged = () => {
-      defineColumns();
+      // Only try to define columns if we still don't have them
+      if (columns.length === 0) {
+        defineColumns();
+      }
     };
 
-    dataSource.on("changed", handleChanged);
     // Initial load
-    dataSource.load().then(handleChanged);
+    if (columns.length === 0) {
+      dataSource.load().then(handleChanged);
+      if (moduleId) defineColumns();
+    }
 
-    // Also try defining columns immediately if we have moduleId (don't wait for data load)
-    if (moduleId) defineColumns();
+    dataSource.on("changed", handleChanged);
 
     return () => {
       isMounted = false;
       dataSource.off("changed", handleChanged);
     };
-  }, [dataSource, moduleId]);
+  }, [dataSource, moduleId, columns.length]);
 
   return (
     <DataGrid

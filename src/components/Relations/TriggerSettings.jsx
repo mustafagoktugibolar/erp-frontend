@@ -8,9 +8,14 @@ import { SelectBox } from "devextreme-react/select-box";
 import TextField from "@mui/material/TextField";
 import { getModuleDetails } from "services/moduleService";
 
-function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId }) {
+function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId, isGlobal }) {
     const [triggerField, setTriggerField] = useState("");
     const [targetField, setTargetField] = useState("");
+
+    // Join Keys for Global Rules
+    const [joinKeySource, setJoinKeySource] = useState("");
+    const [joinKeyTarget, setJoinKeyTarget] = useState("");
+
     const [mappings, setMappings] = useState([]);
 
     const [sourceColumns, setSourceColumns] = useState([]);
@@ -46,6 +51,8 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
                 const parsed = JSON.parse(value);
                 setTriggerField((prev) => (parsed.triggerField !== prev ? parsed.triggerField || "" : prev));
                 setTargetField((prev) => (parsed.targetField !== prev ? parsed.targetField || "" : prev));
+                setJoinKeySource((prev) => (parsed.joinKeySource !== prev ? parsed.joinKeySource || "" : prev));
+                setJoinKeyTarget((prev) => (parsed.joinKeyTarget !== prev ? parsed.joinKeyTarget || "" : prev));
 
                 const mapArray = [];
                 if (parsed.valueMapping) {
@@ -60,7 +67,7 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
         }
     }, [value]);
 
-    const handleUpdate = (newTrigger, newTarget, newMappings) => {
+    const handleUpdate = (newTrigger, newTarget, newMappings, newJoinSrc, newJoinTgt) => {
         const valueMapping = {};
         (newMappings || mappings).forEach((m) => {
             if (m.sourceValue && m.targetValue) {
@@ -71,6 +78,8 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
         const settingsObj = {
             triggerField: newTrigger !== undefined ? newTrigger : triggerField,
             targetField: newTarget !== undefined ? newTarget : targetField,
+            joinKeySource: newJoinSrc !== undefined ? newJoinSrc : joinKeySource,
+            joinKeyTarget: newJoinTgt !== undefined ? newJoinTgt : joinKeyTarget,
             valueMapping,
         };
 
@@ -79,7 +88,7 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
 
     const updateMappings = (newMappings) => {
         setMappings(newMappings);
-        handleUpdate(undefined, undefined, newMappings);
+        handleUpdate(undefined, undefined, newMappings, undefined, undefined);
     };
 
     const fieldSelectorProps = {
@@ -97,6 +106,8 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
     return (
         <MDBox p={2} border="1px solid #ccc" borderRadius="lg">
             <MDTypography variant="h6">Smart Trigger Rules</MDTypography>
+
+            {/* Standard Fields */}
             <MDBox display="flex" gap={2} mb={2}>
                 <MDBox width="100%">
                     <MDTypography variant="caption" fontWeight="bold">
@@ -107,7 +118,7 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
                         value={triggerField}
                         onValueChanged={(e) => {
                             setTriggerField(e.value);
-                            handleUpdate(e.value, undefined, undefined);
+                            handleUpdate(e.value, undefined, undefined, undefined, undefined);
                         }}
                         placeholder="Select or type field..."
                         {...fieldSelectorProps}
@@ -123,13 +134,49 @@ function TriggerSettings({ value, onValueChanged, sourceModuleId, targetModuleId
                         value={targetField}
                         onValueChanged={(e) => {
                             setTargetField(e.value);
-                            handleUpdate(undefined, e.value, undefined);
+                            handleUpdate(undefined, e.value, undefined, undefined, undefined);
                         }}
                         placeholder="Select or type field..."
                         {...fieldSelectorProps}
                     />
                 </MDBox>
             </MDBox>
+
+            {/* Global Join Keys */}
+            {isGlobal && (
+                <MDBox display="flex" gap={2} mb={2} p={2} bgcolor="#f5f5f5" borderRadius="md">
+                    <MDBox width="100%">
+                        <MDTypography variant="caption" fontWeight="bold" color="primary">
+                            Match By Source Field (Join Key)
+                        </MDTypography>
+                        <SelectBox
+                            items={sourceColumns || []}
+                            value={joinKeySource}
+                            onValueChanged={(e) => {
+                                setJoinKeySource(e.value);
+                                handleUpdate(undefined, undefined, undefined, e.value, undefined);
+                            }}
+                            placeholder="e.g. project_code"
+                            {...fieldSelectorProps}
+                        />
+                    </MDBox>
+                    <MDBox width="100%">
+                        <MDTypography variant="caption" fontWeight="bold" color="primary">
+                            Match Target Field (Join Key)
+                        </MDTypography>
+                        <SelectBox
+                            items={targetColumns || []}
+                            value={joinKeyTarget}
+                            onValueChanged={(e) => {
+                                setJoinKeyTarget(e.value);
+                                handleUpdate(undefined, undefined, undefined, undefined, e.value);
+                            }}
+                            placeholder="e.g. linked_project_id"
+                            {...fieldSelectorProps}
+                        />
+                    </MDBox>
+                </MDBox>
+            )}
 
             <MDTypography variant="caption" fontWeight="bold">
                 Value Mappings
@@ -170,6 +217,7 @@ TriggerSettings.propTypes = {
     onValueChanged: PropTypes.func.isRequired,
     sourceModuleId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     targetModuleId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    isGlobal: PropTypes.bool,
 };
 
 export default TriggerSettings;

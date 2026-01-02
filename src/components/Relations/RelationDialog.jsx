@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Popup } from "devextreme-react/popup";
 import { SelectBox } from "devextreme-react/select-box";
+import { CheckBox } from "devextreme-react/check-box";
 import MDBox from "components/MDBox";
 import MDButton from "components/MDButton";
 import MDTypography from "components/MDTypography";
@@ -16,6 +17,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
   const [targetId, setTargetId] = useState(null);
   const [relationType, setRelationType] = useState("TRIGGER");
   const [settings, setSettings] = useState("{}");
+  const [isGlobal, setIsGlobal] = useState(false);
 
   // Data Sources
   const [sourceEntities, setSourceEntities] = useState([]);
@@ -31,7 +33,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
 
   // Load Source Entities
   useEffect(() => {
-    if (!sourceType) {
+    if (!sourceType || isGlobal) {
       setSourceEntities([]);
       return;
     }
@@ -41,11 +43,11 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
       .then((data) => setSourceEntities(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Failed to load source entities", err))
       .finally(() => setSourceLoading(false));
-  }, [sourceType, availableModules]);
+  }, [sourceType, availableModules, isGlobal]);
 
   // Load Target Entities
   useEffect(() => {
-    if (!targetType) {
+    if (!targetType || isGlobal) {
       setTargetEntities([]);
       return;
     }
@@ -55,18 +57,26 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
       .then((data) => setTargetEntities(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Failed to load target entities", err))
       .finally(() => setTargetLoading(false));
-  }, [targetType, availableModules]);
+  }, [targetType, availableModules, isGlobal]);
 
   const handleSave = () => {
-    if (!sourceType || !sourceId || !targetType || !targetId) {
-      alert("Please fill all required fields (Source Type, Source ID, Target Type, Target ID).");
-      return;
+    if (isGlobal) {
+      if (!sourceType || !targetType) {
+        alert("Please select Source and Target types for Global Rule.");
+        return;
+      }
+    } else {
+      if (!sourceType || !sourceId || !targetType || !targetId) {
+        alert("Please fill all required fields (Source Type, Source ID, Target Type, Target ID).");
+        return;
+      }
     }
+
     const payload = {
       sourceType,
-      sourceId,
+      sourceId: isGlobal ? "-1" : sourceId,
       targetType,
-      targetId,
+      targetId: isGlobal ? "-1" : targetId,
       relationType,
       settings,
     };
@@ -79,11 +89,13 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
     if (isOpen) {
       if (initialData) {
         setSourceType(initialData.sourceType);
-        setSourceId(initialData.sourceId); // IDs are safe to set even if entities loading
+        setSourceId(initialData.sourceId);
         setTargetType(initialData.targetType);
         setTargetId(initialData.targetId);
         setRelationType(initialData.relationType || "TRIGGER");
         setSettings(initialData.settings || "{}");
+        // Check if it was global (basic check: IDs are -1)
+        setIsGlobal(initialData.sourceId === "-1" && initialData.targetId === "-1");
       } else {
         setSourceType(null);
         setTargetType(null);
@@ -91,18 +103,19 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
         setTargetId(null);
         setRelationType("TRIGGER");
         setSettings("{}");
+        setIsGlobal(false);
       }
     }
   }, [isOpen, initialData]);
 
   const handleSourceTypeChange = (e) => {
     setSourceType(e.value);
-    setSourceId(null); // Reset ID only on manual change
+    if (!isGlobal) setSourceId(null);
   };
 
   const handleTargetTypeChange = (e) => {
     setTargetType(e.value);
-    setTargetId(null); // Reset ID only on manual change
+    if (!isGlobal) setTargetId(null);
   };
 
   const displayExpr = (item) =>
@@ -121,6 +134,24 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
       showCloseButton={true}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "16px" }}>
+        {/* Global Rule Checkbox */}
+        <div>
+          <CheckBox
+            value={isGlobal}
+            onValueChanged={(e) => setIsGlobal(e.value)}
+            text="Global Rule (Apply to All Records)"
+          />
+          {isGlobal && (
+            <MDBox mt={1} p={1} bgcolor="#e3f2fd" borderRadius="md">
+              <MDTypography variant="caption" color="info" fontWeight="regular">
+                <strong>Note:</strong> This rule will apply to <strong>ALL</strong> records of the
+                selected Source and Target Types. Triggers will be defined based on the &quot;Join
+                Keys&quot; configured in the settings below.
+              </MDTypography>
+            </MDBox>
+          )}
+        </div>
+
         {/* Source Section */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <div>
@@ -141,8 +172,14 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
               value={sourceId}
               valueExpr="id"
               displayExpr={displayExpr}
-              disabled={!sourceType}
-              placeholder={sourceLoading ? "Loading..." : "Select Source Entity..."}
+              disabled={!sourceType || isGlobal}
+              placeholder={
+                isGlobal
+                  ? "Global Rule (All Records)"
+                  : sourceLoading
+                  ? "Loading..."
+                  : "Select Source Entity..."
+              }
               onValueChanged={(e) => setSourceId(e.value)}
               searchEnabled
               showClearButton
@@ -171,8 +208,14 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
               value={targetId}
               valueExpr="id"
               displayExpr={displayExpr}
-              disabled={!targetType}
-              placeholder={targetLoading ? "Loading..." : "Select Target Entity..."}
+              disabled={!targetType || isGlobal}
+              placeholder={
+                isGlobal
+                  ? "Global Rule (All Records)"
+                  : targetLoading
+                  ? "Loading..."
+                  : "Select Target Entity..."
+              }
               onValueChanged={(e) => setTargetId(e.value)}
               searchEnabled
               showClearButton
@@ -209,6 +252,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
             onValueChanged={(e) => setSettings(e.value)}
             sourceModuleId={getModuleId(sourceType)}
             targetModuleId={getModuleId(targetType)}
+            isGlobal={isGlobal}
           />
         </div>
 

@@ -32,7 +32,7 @@ import DataGrid, { Column } from "devextreme-react/data-grid";
 import "devextreme/dist/css/dx.common.css";
 import "devextreme/dist/css/dx.light.css";
 
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import { api } from "api";
 
 export default function CreateModule() {
@@ -62,60 +62,32 @@ export default function CreateModule() {
     { value: "business", label: "Business", icon: <BusinessIcon /> },
   ];
 
-  const getCellValue = (cell) => {
-    const v = cell.value;
-    if (v && typeof v === "object") {
-      if (v.text) return v.text; // Hyperlink
-      if (v.result !== undefined) return v.result; // Formula
-      if (v.richText) return v.richText.map((r) => r.text).join("");
-    }
-    return v;
-  };
-
   const parseExcelFile = (fileObj) => {
     const reader = new FileReader();
-    reader.onload = async (evt) => {
+    reader.onload = (evt) => {
       try {
         const buffer = evt.target.result;
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
-        const worksheet = workbook.worksheets[0];
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
 
-        const jsonData = [];
-        const headers = [];
+        // Parse to JSON (headers are automatically handled)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-        // Get headers from first row
-        const firstRow = worksheet.getRow(1);
-        if (!firstRow) return;
-
-        firstRow.eachCell((cell, colNumber) => {
-          headers[colNumber] = getCellValue(cell);
-        });
-
-        // Iterate rows starting from 2
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return; // Skip header row
-          const rowData = {};
-          let isEmpty = true;
-
-          headers.forEach((header, index) => {
-            if (!header) return;
-            const cell = row.getCell(index);
-            const val = getCellValue(cell);
-            // Handle simple values; complex objects (rich text, hyperlinks) might need processing
-            rowData[header] = val !== null && val !== undefined ? val : "";
-            if (val) isEmpty = false;
-          });
-
-          if (!isEmpty) jsonData.push(rowData);
-        });
+        if (jsonData.length === 0) {
+          console.warn("Excel file is empty");
+          return;
+        }
 
         console.log("Parsed Excel Data:", jsonData);
         setExcelData(jsonData);
-        setExcelColumns(headers.filter((h) => h));
+
+        // Extract headers from the first row keys
+        setExcelColumns(Object.keys(jsonData[0]));
         setExcelParsed(true);
       } catch (error) {
         console.error("Error parsing excel:", error);
+        alert("Failed to parse Excel file. Please ensure it is a valid format.");
       }
     };
     reader.readAsArrayBuffer(fileObj);
