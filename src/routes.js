@@ -37,6 +37,7 @@ Coded by www.creative-tim.com
 
 // Material Dashboard 2 React layouts
 import Dashboard from "layouts/dashboard";
+import RelationManager from "layouts/relations"; // Add this line
 
 // @mui icons
 import Icon from "@mui/material/Icon";
@@ -50,6 +51,14 @@ const routes = [
     component: <Dashboard />,
   },
 
+  {
+    type: "collapse",
+    name: "Relations",
+    key: "relations",
+    icon: <Icon fontSize="small">link</Icon>, // Use 'link' icon
+    route: "/relations",
+    component: <RelationManager />,
+  },
   { type: "title", title: "ERP MODULES", key: "erp-title" },
 ];
 

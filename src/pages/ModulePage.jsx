@@ -91,7 +91,12 @@ export default function ModulePage({ moduleKey, moduleId }) {
 
           {/* Conditionally render based on viewMode */}
           {viewMode === "grid" && (
-            <DxDataGrid moduleKey={moduleKey} moduleId={moduleId} height={600} />
+            <DxDataGrid
+              key={moduleKey || moduleId} // Force remount when module changes to reset state
+              moduleKey={moduleKey}
+              moduleId={moduleId}
+              height={600}
+            />
           )}
           {viewMode === "pivot" && <PivotGrid moduleKey={moduleKey} height={600} />}
           {viewMode === "list" && <div>List view not implemented yet.</div>}
