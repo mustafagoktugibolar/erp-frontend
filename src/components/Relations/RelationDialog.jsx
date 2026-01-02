@@ -8,7 +8,7 @@ import MDTypography from "components/MDTypography";
 import TriggerSettings from "./TriggerSettings";
 import { getEntities } from "services/moduleService";
 
-function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes }) {
+function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes, initialData }) {
   // State
   const [sourceType, setSourceType] = useState(null);
   const [targetType, setTargetType] = useState(null);
@@ -23,7 +23,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
   const [sourceLoading, setSourceLoading] = useState(false);
   const [targetLoading, setTargetLoading] = useState(false);
 
-  // Derived Module IDs (for TriggerSettings)
+  // Derived Module IDs
   const getModuleId = (type) => {
     const mod = availableModules.find((m) => m.name === type || m.type === type);
     return mod ? mod.id : null;
@@ -33,11 +33,9 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
   useEffect(() => {
     if (!sourceType) {
       setSourceEntities([]);
-      setSourceId(null);
       return;
     }
     setSourceLoading(true);
-    setSourceId(null); // Reset selection on type change
     const moduleId = getModuleId(sourceType);
     getEntities(sourceType, moduleId)
       .then((data) => setSourceEntities(Array.isArray(data) ? data : []))
@@ -49,11 +47,9 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
   useEffect(() => {
     if (!targetType) {
       setTargetEntities([]);
-      setTargetId(null);
       return;
     }
     setTargetLoading(true);
-    setTargetId(null);
     const moduleId = getModuleId(targetType);
     getEntities(targetType, moduleId)
       .then((data) => setTargetEntities(Array.isArray(data) ? data : []))
@@ -78,21 +74,36 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
     onSave(payload);
   };
 
-  const resetForm = useCallback(() => {
-    setSourceType(null);
-    setTargetType(null);
-    setSourceId(null);
-    setTargetId(null);
-    setRelationType("TRIGGER");
-    setSettings("{}");
-  }, []);
-
-  // Reset form when opening
+  // Initialize or Reset Form
   useEffect(() => {
     if (isOpen) {
-      resetForm();
+      if (initialData) {
+        setSourceType(initialData.sourceType);
+        setSourceId(initialData.sourceId); // IDs are safe to set even if entities loading
+        setTargetType(initialData.targetType);
+        setTargetId(initialData.targetId);
+        setRelationType(initialData.relationType || "TRIGGER");
+        setSettings(initialData.settings || "{}");
+      } else {
+        setSourceType(null);
+        setTargetType(null);
+        setSourceId(null);
+        setTargetId(null);
+        setRelationType("TRIGGER");
+        setSettings("{}");
+      }
     }
-  }, [isOpen, resetForm]);
+  }, [isOpen, initialData]);
+
+  const handleSourceTypeChange = (e) => {
+    setSourceType(e.value);
+    setSourceId(null); // Reset ID only on manual change
+  };
+
+  const handleTargetTypeChange = (e) => {
+    setTargetType(e.value);
+    setTargetId(null); // Reset ID only on manual change
+  };
 
   const displayExpr = (item) =>
     item
@@ -117,7 +128,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
             <SelectBox
               items={moduleTypes}
               value={sourceType}
-              onValueChanged={(e) => setSourceType(e.value)}
+              onValueChanged={handleSourceTypeChange}
               placeholder="Select Source Module..."
               searchEnabled
               showClearButton
@@ -147,7 +158,7 @@ function RelationDialog({ isOpen, onClose, onSave, availableModules, moduleTypes
             <SelectBox
               items={moduleTypes}
               value={targetType}
-              onValueChanged={(e) => setTargetType(e.value)}
+              onValueChanged={handleTargetTypeChange}
               placeholder="Select Target Module..."
               searchEnabled
               showClearButton
@@ -223,6 +234,18 @@ RelationDialog.propTypes = {
   onSave: PropTypes.func.isRequired,
   availableModules: PropTypes.array.isRequired,
   moduleTypes: PropTypes.array.isRequired,
+  initialData: PropTypes.shape({
+    sourceType: PropTypes.string,
+    sourceId: PropTypes.string,
+    targetType: PropTypes.string,
+    targetId: PropTypes.string,
+    relationType: PropTypes.string,
+    settings: PropTypes.string,
+  }),
+};
+
+RelationDialog.defaultProps = {
+  initialData: null,
 };
 
 export default RelationDialog;

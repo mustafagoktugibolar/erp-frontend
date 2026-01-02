@@ -6,7 +6,7 @@ import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
 import { DataGrid, Column, Editing, Popup, Form, Item } from "devextreme-react/data-grid";
-import { getRelations, createRelation, deleteRelation } from "services/arcRelationService";
+import { getRelations, createRelation, deleteRelation, updateRelation } from "services/arcRelationService";
 import {
   getModules,
   getObjectDetails,
@@ -30,6 +30,7 @@ function RelationManager() {
   const [previewData, setPreviewData] = useState([]); // Changed to array for DataGrid
   const [previewLoading, setPreviewLoading] = useState(false);
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [editingRelation, setEditingRelation] = useState(null);
 
   const [sourceColumns, setSourceColumns] = useState([]);
   const [targetColumns, setTargetColumns] = useState([]);
@@ -64,9 +65,9 @@ function RelationManager() {
     }
   };
 
-  const handleCreateRelation = useCallback(async (payload) => {
+  const handleCreateOrUpdateRelation = useCallback(async (payload) => {
     try {
-      console.log("Creating relation with payload:", payload);
+      console.log("Saving relation with payload:", payload);
       // Backend expects string IDs
       const sanitizedPayload = {
         ...payload,
@@ -76,14 +77,20 @@ function RelationManager() {
         settings: payload.settings || "{}"
       };
 
-      await createRelation(sanitizedPayload);
+      if (editingRelation) {
+        await updateRelation(editingRelation.id, sanitizedPayload);
+      } else {
+        await createRelation(sanitizedPayload);
+      }
+
       setDialogOpen(false);
+      setEditingRelation(null);
       loadRelations();
     } catch (error) {
-      console.error("Failed to create relation", error);
-      alert(`Failed to create relation: ${error.message || "Unknown error"}`);
+      console.error("Failed to save relation", error);
+      alert(`Failed to save relation: ${error.message || "Unknown error"}`);
     }
-  }, [loadRelations]);
+  }, [loadRelations, editingRelation]);
 
   const onRowRemoved = useCallback(async (e) => {
     try {
@@ -92,6 +99,24 @@ function RelationManager() {
       console.error("Failed to delete relation", error);
     }
   }, []);
+
+  const handleEditClick = (relation) => {
+    setEditingRelation(relation);
+    setDialogOpen(true);
+  };
+
+  const renderActionCell = (cellData) => {
+    return (
+      <MDButton
+        variant="text"
+        color="info"
+        size="small"
+        onClick={() => handleEditClick(cellData.data)}
+      >
+        Edit
+      </MDButton>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -116,7 +141,10 @@ function RelationManager() {
                 <MDTypography variant="h6" color="white">
                   Relations Manager
                 </MDTypography>
-                <MDButton variant="gradient" color="dark" onClick={() => setDialogOpen(true)}>
+                <MDButton variant="gradient" color="dark" onClick={() => {
+                  setEditingRelation(null);
+                  setDialogOpen(true);
+                }}>
                   + New Relation
                 </MDButton>
               </MDBox>
@@ -140,6 +168,7 @@ function RelationManager() {
                   <Column dataField="targetType" caption="Target Type" />
                   <Column dataField="targetId" caption="Target ID" width={100} />
                   <Column dataField="relationType" caption="Rel Type" />
+                  <Column caption="Actions" width={100} cellRender={renderActionCell} />
                   <Column dataField="settings" caption="Settings (JSON)" visible={false} />
                 </DataGrid>
               </MDBox>
@@ -148,14 +177,16 @@ function RelationManager() {
         </Grid>
       </MDBox>
       <br />
-      <br /> <br /> <br /> <br />
-
       <RelationDialog
         isOpen={isDialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSave={handleCreateRelation}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingRelation(null);
+        }}
+        onSave={handleCreateOrUpdateRelation}
         availableModules={availableModules}
         moduleTypes={moduleTypes}
+        initialData={editingRelation}
       />
     </DashboardLayout>
   );
